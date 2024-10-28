@@ -2,9 +2,9 @@
  Meteorological RC Plane
 
 # Scope
-Collection meteorological data from the different alttitudes(temperature, pressure, wind speed)
+Collection of meteorological data from the different altitude(temperature, pressure, wind speed)
 
-# Computer memery/resurses
+# Computer memory/resources
 Toaster
 
 # Supported device
