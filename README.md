@@ -8,5 +8,5 @@ Collection of meteorological data from the different altitude(temperature, press
 Toaster
 
 # Supported device
-Windows, MacOS, Linux, Android.
+Windows, MacOS, Linux, Android
 
