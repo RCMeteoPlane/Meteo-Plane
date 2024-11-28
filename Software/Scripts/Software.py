@@ -1,48 +1,28 @@
 import tkinter as tk
-import cv2
-from PIL import Image, ImageTk
+import os
 
-def play_video():
-    """Play video frame by frame."""
-    # Open video file
-    cap = cv2.VideoCapture("/Users/admin/Downloads/JOPORN_NET_41196_240p.mp4")  # Replace with your video file path
-    
-    def update_frame():
-        ret, frame = cap.read()
-        if ret:
-            # Convert the frame to RGB (OpenCV uses BGR by default)
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(frame_rgb)
-            img = ImageTk.PhotoImage(img)
-            
-            # Update the image on the label
-            label.config(image=img)
-            label.image = img  # Keep a reference to the image
-            
-            # Call the function again after a short delay
-            root.after(10, update_frame)
-        else:
-            cap.release()  # Release video capture when done
-
-    # Start video playback
-    update_frame()
+def spawn_text():
+    """Create a new 'Hello, World!' label on the screen."""
+    label = tk.Label(root, text="Hello, World!", bg='white', fg='black', font=("Arial", 20))
+    label.place(x=50, y=50 + 30 * len(labels))  # Place each label slightly below the previous one
+    labels.append(label)
 
 # Create the main window
 root = tk.Tk()
-root.title("White Screen with Video")
+root.title("White Screen with Hello World")
 root.attributes('-fullscreen', True)
 root.configure(bg='white')
 
-# Label to display video frames
-label = tk.Label(root, bg='white')
-label.pack()
+# List to keep track of the labels
+labels = []
 
-# Button to play video
-button = tk.Button(root, text="Play Video", command=play_video, font=("Arial", 14))
+# Add a button to spawn "Hello, World!" text
+button = tk.Button(root, text="Spawn Hello, World!", command=spawn_text, font=("Arial", 14))
 button.place(x=50, y=50)
 
 # Add a key binding to close the application (e.g., pressing "Escape")
-root.bind("<Escape>", lambda event: root.destroy())
+root.bind("<Escape>", lambda event: root.destroy(), os._exit(0)
+)
 
 # Run the application
 root.mainloop()
