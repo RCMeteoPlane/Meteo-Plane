@@ -1,28 +1,25 @@
 import tkinter as tk
 import os
-
-def spawn_text():
-    """Create a new 'Hello, World!' label on the screen."""
-    label = tk.Label(root, text="Hello, World!", bg='white', fg='black', font=("Arial", 20))
-    label.place(x=50, y=50 + 30 * len(labels))  # Place each label slightly below the previous one
-    labels.append(label)
+   
 
 # Create the main window
 root = tk.Tk()
-root.title("White Screen with Hello World")
+root.title("Meteo Plane")
 root.attributes('-fullscreen', True)
-root.configure(bg='white')
+root.configure(bg='black')
 
 # List to keep track of the labels
 labels = []
-
+label = tk.Label(root, text="Temperature:", bg = 'black',fg='white', font=("Arial", 20))
+label.place(x=50, y=50)
+labels.append(label)
+label1 = tk.Label(root, text="Pressure:", bg = 'black',fg='white', font=("Arial", 20))
+label1.place(x=300,y=50)
 # Add a button to spawn "Hello, World!" text
-button = tk.Button(root, text="Spawn Hello, World!", command=spawn_text, font=("Arial", 14))
-button.place(x=50, y=50)
+
 
 # Add a key binding to close the application (e.g., pressing "Escape")
-root.bind("<Escape>", lambda event: root.destroy(), os._exit(0)
-)
+root.bind("<Escape>", lambda event: root.destroy() )
 
 # Run the application
 root.mainloop()
