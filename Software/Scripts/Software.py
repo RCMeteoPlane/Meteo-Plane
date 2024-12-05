@@ -16,7 +16,7 @@ labels.append(label)
 label1 = tk.Label(root, text="Pressure:", bg = 'black',fg='white', font=("Arial", 20))
 label1.place(x=300,y=50)
 # Add a button to spawn "Hello, World!" text
-
+#..
 
 # Add a key binding to close the application (e.g., pressing "Escape")
 root.bind("<Escape>", lambda event: root.destroy() )
