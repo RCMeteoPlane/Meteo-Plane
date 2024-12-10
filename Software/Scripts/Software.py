@@ -3,6 +3,9 @@ from tkinter import messagebox
 import serial
 import threading
 import sys
+import folium
+import webbrowser
+import time
 
 # Replace these with your actual serial ports
 ESP1_PORT = "/dev/cu.usbserial-14310"  # Replace with the port for the first ESP32
@@ -13,6 +16,8 @@ BAUD_RATE2 = 115200  # Baud rate for ESP2 (GPS module)
 # Global dictionaries to store label references for both ESP32s
 labels_esp1 = {}
 labels_esp2 = {}
+latitude, longitude = 0.0, 0.0  # Default GPS coordinates
+
 
 def read_from_esp1():
     """Read and parse data from the first ESP32 (environment/accelerometer)."""
@@ -31,6 +36,7 @@ def read_from_esp1():
             except Exception as e:
                 update_status_esp1(f"Error: {e}")
 
+
 def parse_and_update_esp1(raw_data):
     """Parse and display data from ESP1."""
     lines = raw_data.split("\n")
@@ -42,41 +48,62 @@ def parse_and_update_esp1(raw_data):
         elif line.startswith("Temp:"):
             labels_esp1["temp"].config(text=line)
 
+
 def read_from_esp2():
     """Read and parse data from the second ESP32 (GPS module)."""
-    global running
+    global running, latitude, longitude
     while running:
         if esp2.is_open:
             try:
                 # Read raw data from the GPS ESP32
                 raw_data = esp2.readline()
-                print(f"Raw GPS data: {raw_data}")  # Debugging raw data
-
-                # Decode data, ignoring errors
                 data = raw_data.decode("utf-8", errors="ignore").strip()
                 if data:  # If valid data is received
                     parse_and_update_esp2(data)  # Parse and update the GUI
             except Exception as e:
                 update_status_esp2(f"Error: {e}")
 
+
 def parse_and_update_esp2(raw_data):
     """Parse and display GPS data."""
-    print(f"Parsed GPS data: {raw_data}")  # Debugging parsed data
-
+    global latitude, longitude
     if "Latitude:" in raw_data:  # Check for Latitude keyword
-        labels_esp2["latitude"].config(text=raw_data)
+        latitude = float(raw_data.split(":")[1].strip())
+        labels_esp2["latitude"].config(text=f"Latitude: {latitude}")
     elif "Longitude:" in raw_data:  # Check for Longitude keyword
-        labels_esp2["longitude"].config(text=raw_data)
-    else:
-        labels_esp2["status"].config(text="Waiting for GPS data...")
+        longitude = float(raw_data.split(":")[1].strip())
+        labels_esp2["longitude"].config(text=f"Longitude: {longitude}")
+
 
 def update_status_esp1(message):
     """Update status for ESP1."""
     labels_esp1["status"].config(text=message)
 
+
 def update_status_esp2(message):
     """Update status for ESP2."""
     labels_esp2["status"].config(text=message)
+
+
+def create_map():
+    """Create and save a live map using the current GPS coordinates."""
+    global latitude, longitude
+    if latitude == 0.0 and longitude == 0.0:
+        messagebox.showinfo("Map", "No valid GPS data available yet.")
+        return
+
+    # Create a map centered at the current GPS coordinates
+    m = folium.Map(location=[latitude, longitude], zoom_start=15)
+
+    # Add a marker for the current location
+    folium.Marker([latitude, longitude], tooltip="Current Location").add_to(m)
+
+    # Save the map as an HTML file
+    m.save("gps_map.html")
+
+    # Open the map in the default web browser
+    webbrowser.open("gps_map.html")
+
 
 def on_close():
     """Handle app closure."""
@@ -88,9 +115,10 @@ def on_close():
         esp2.close()
     root.destroy()
 
+
 # Tkinter GUI
 root = tk.Tk()
-root.title("ESP32 Data Viewer")
+root.title("ESP32 Data Viewer with Live Map")
 root.geometry("800x600")
 
 # ESP1 (environment/accelerometer) section
@@ -121,6 +149,10 @@ labels_esp2["latitude"].grid(row=1, column=0, sticky="w")
 
 labels_esp2["longitude"] = tk.Label(frame_esp2, text="Longitude: ...", font=("Arial", 12))
 labels_esp2["longitude"].grid(row=2, column=0, sticky="w")
+
+# Map button
+map_button = tk.Button(root, text="Open Live Map", command=create_map)
+map_button.pack(pady=10)
 
 # Close button
 close_button = tk.Button(root, text="Close", command=on_close)
