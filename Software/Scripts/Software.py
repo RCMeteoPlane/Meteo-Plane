@@ -80,7 +80,7 @@ def update_status_esp2(message):
     labels_esp2["status"].config(text=message)
 
 def create_map():
-    """Create and display a live map embedded in the main application window."""
+    """Create and display a live map using PyWebView embedded in a separate frame."""
     global latitude, longitude
 
     if latitude == 0.0 and longitude == 0.0:
@@ -96,14 +96,12 @@ def create_map():
         m.save(map_file_path)
         print(f"Map file saved as {map_file_path}")
 
-        # Embed the map in the main window
-        map_frame = tk.Frame(root, width=960, height=400)
-        map_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Launch the map with PyWebView
+        # Embed the map in a PyWebView window
         file_url = f"file://{os.path.abspath(map_file_path)}"
+
+        # Display the map in a separate webview window
         map_window = webview.create_window("Live Map", file_url)
-        webview.start(debug=True)
+        webview.start()
 
     except Exception as e:
         print(f"Error creating map: {e}")
