@@ -4,8 +4,8 @@ import serial
 import threading
 import sys
 import folium
-import webbrowser
-import time
+import os
+import webview
 
 # Replace these with your actual serial ports
 ESP1_PORT = "/dev/cu.usbserial-14310"  # Replace with the port for the first ESP32
@@ -17,7 +17,7 @@ BAUD_RATE2 = 115200  # Baud rate for ESP2 (GPS module)
 labels_esp1 = {}
 labels_esp2 = {}
 latitude, longitude = 0.0, 0.0  # Default GPS coordinates
-
+map_file_path = "gps_map.html"
 
 def read_from_esp1():
     """Read and parse data from the first ESP32 (environment/accelerometer)."""
@@ -36,7 +36,6 @@ def read_from_esp1():
             except Exception as e:
                 update_status_esp1(f"Error: {e}")
 
-
 def parse_and_update_esp1(raw_data):
     """Parse and display data from ESP1."""
     lines = raw_data.split("\n")
@@ -47,7 +46,6 @@ def parse_and_update_esp1(raw_data):
             labels_esp1["roll"].config(text=line)
         elif line.startswith("Temp:"):
             labels_esp1["temp"].config(text=line)
-
 
 def read_from_esp2():
     """Read and parse data from the second ESP32 (GPS module)."""
@@ -63,7 +61,6 @@ def read_from_esp2():
             except Exception as e:
                 update_status_esp2(f"Error: {e}")
 
-
 def parse_and_update_esp2(raw_data):
     """Parse and display GPS data."""
     global latitude, longitude
@@ -74,36 +71,45 @@ def parse_and_update_esp2(raw_data):
         longitude = float(raw_data.split(":")[1].strip())
         labels_esp2["longitude"].config(text=f"Longitude: {longitude}")
 
-
 def update_status_esp1(message):
     """Update status for ESP1."""
     labels_esp1["status"].config(text=message)
-
 
 def update_status_esp2(message):
     """Update status for ESP2."""
     labels_esp2["status"].config(text=message)
 
-
 def create_map():
-    """Create and save a live map using the current GPS coordinates."""
+    """Create and display a live map embedded in the main application window."""
     global latitude, longitude
+
     if latitude == 0.0 and longitude == 0.0:
         messagebox.showinfo("Map", "No valid GPS data available yet.")
         return
 
-    # Create a map centered at the current GPS coordinates
-    m = folium.Map(location=[latitude, longitude], zoom_start=15)
+    try:
+        # Create the map
+        m = folium.Map(location=[latitude, longitude], zoom_start=15)
+        folium.Marker([latitude, longitude], tooltip="Current Location").add_to(m)
 
-    # Add a marker for the current location
-    folium.Marker([latitude, longitude], tooltip="Current Location").add_to(m)
+        # Save the map to a file
+        m.save(map_file_path)
+        print(f"Map file saved as {map_file_path}")
 
-    # Save the map as an HTML file
-    m.save("gps_map.html")
+        # Embed the map in the Tkinter application
+        file_url = f"file://{os.path.abspath(map_file_path)}"
 
-    # Open the map in the default web browser
-    webbrowser.open("gps_map.html")
+        # Create a frame for the map
+        map_frame = tk.Frame(root, width=960, height=400)
+        map_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # Use PyWebView to load the map in the frame
+        map_window = webview.create_window("Live Map", file_url)
+        webview.start(gui="tkinter", debug=True, parent=map_frame)
+
+    except Exception as e:
+        print(f"Error creating map: {e}")
+        messagebox.showerror("Error", f"Failed to create map: {e}")
 
 def on_close():
     """Handle app closure."""
@@ -115,11 +121,10 @@ def on_close():
         esp2.close()
     root.destroy()
 
-
 # Tkinter GUI
 root = tk.Tk()
 root.title("ESP32 Data Viewer with Live Map")
-root.geometry("800x600")
+root.geometry("1000x800")
 
 # ESP1 (environment/accelerometer) section
 frame_esp1 = tk.LabelFrame(root, text="ESP32 Sensor Data", padx=10, pady=10)
@@ -151,7 +156,7 @@ labels_esp2["longitude"] = tk.Label(frame_esp2, text="Longitude: ...", font=("Ar
 labels_esp2["longitude"].grid(row=2, column=0, sticky="w")
 
 # Map button
-map_button = tk.Button(root, text="Open Live Map", command=create_map)
+map_button = tk.Button(root, text="Show Live Map", command=create_map)
 map_button.pack(pady=10)
 
 # Close button
