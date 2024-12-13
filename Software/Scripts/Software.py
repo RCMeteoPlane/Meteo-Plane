@@ -96,16 +96,14 @@ def create_map():
         m.save(map_file_path)
         print(f"Map file saved as {map_file_path}")
 
-        # Embed the map in the Tkinter application
-        file_url = f"file://{os.path.abspath(map_file_path)}"
-
-        # Create a frame for the map
+        # Embed the map in the main window
         map_frame = tk.Frame(root, width=960, height=400)
         map_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Use PyWebView to load the map in the frame
+        # Launch the map with PyWebView
+        file_url = f"file://{os.path.abspath(map_file_path)}"
         map_window = webview.create_window("Live Map", file_url)
-        webview.start(gui="tkinter", debug=True, parent=map_frame)
+        webview.start(debug=True)
 
     except Exception as e:
         print(f"Error creating map: {e}")
