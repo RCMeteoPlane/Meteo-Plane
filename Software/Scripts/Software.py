@@ -5,7 +5,7 @@ import threading
 import sys
 import folium
 import os
-from cefpython3 import cefpython as cef
+import webview
 
 # Replace these with your actual serial ports
 ESP1_PORT = "/dev/cu.usbserial-14310"  # Replace with the port for the first ESP32
@@ -80,7 +80,7 @@ def update_status_esp2(message):
     labels_esp2["status"].config(text=message)
 
 def create_map():
-    """Create and display a live map inside the application window using CEF."""
+    """Create and display a live map inside the application window using pywebview."""
     global latitude, longitude
 
     if latitude == 0.0 and longitude == 0.0:
@@ -96,19 +96,10 @@ def create_map():
         m.save(map_file_path)
         print(f"Map file saved as {map_file_path}")
 
-        # Embed the map using CEF
+        # Open the map in a WebView window
         file_url = f"file://{os.path.abspath(map_file_path)}"
-
-        def cef_thread():
-            settings = {
-                "windowless_rendering_enabled": False,
-            }
-            cef.Initialize(settings)
-            cef.CreateBrowserSync(url=file_url, window_title="Live Map")
-            cef.MessageLoop()
-            cef.Shutdown()
-
-        threading.Thread(target=cef_thread, daemon=True).start()
+        webview.create_window("Live Map", file_url, width=800, height=600, resizable=True)
+        webview.start()
 
     except Exception as e:
         print(f"Error creating map: {e}")
