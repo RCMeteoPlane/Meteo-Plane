@@ -10,3 +10,5 @@ Toaster
 # Supported device
 Windows, MacOS, Linux, Android
 
+# Weekly update
+Blueprint creation in progress, full electronics complition
