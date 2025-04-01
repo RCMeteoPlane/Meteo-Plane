@@ -1,5 +1,8 @@
+# Weekly update
+Blueprint creation in progress, full electronics complition
+
 # Meteo Plane
- Meteorological RC Plane
+Meteorological RC Plane
 
 # Scope
 Collection of meteorological data from the different altitude(temperature, pressure, wind speed)
@@ -10,5 +13,3 @@ Toaster
 # Supported device
 Windows, MacOS, Linux, Android
 
-# Weekly update
-Blueprint creation in progress, full electronics complition
