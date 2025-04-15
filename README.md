@@ -1,5 +1,10 @@
 # Weekly update
-Aleks finished the sketch of the plane, continunig further to print out parts on 3D  printer and esemble whole plane. Aleksandrs finished with electronics, all work perfectly, GPS shows precise location, Compas shows correct position, altitude and temperature detectors also works. All of the equipment was tested. Soft development that Sasha works on, is in progress, will be finished in next 7 days. Misha is working on connection between all ESP, also in progress, will be finished in next 5 days.
+Aleks and Aleksandrs we are working out an aproximet material cost, also
+ decided to make plane out of lighter material, and not print it. Alekss 
+ finished the sketch, including all calculations on lift force. Sasha
+ finished the sofware, only need to include ESP-NOW into software, 
+ that on what Misha and Sasha is curently working on, it will be finished 
+ during this week.
 
 # Meteo Plane
 Meteorological RC Plane
