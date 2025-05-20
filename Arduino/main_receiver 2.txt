@@ -1,0 +1,72 @@
+#include <esp_now.h>
+#include <WiFi.h>
+
+// Define the same structure as transmitter
+typedef struct struct_message {
+  float temperature;
+  float humidity;
+  float pressure;
+  float roll;
+  float pitch;
+  float altitude; // Added to match transmitter
+} struct_message;
+
+// Create a struct_message to hold incoming data
+struct_message incomingData;
+
+// Callback when data is received
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  if (len == sizeof(incomingData)) {
+    memcpy(&incomingData, data, sizeof(incomingData));
+
+    Serial.println("\n Received Sensor Data:");
+    Serial.print(" Temperature: ");
+    Serial.print(incomingData.temperature);
+    Serial.println(" °C");
+
+    Serial.print("Humidity: ");
+    Serial.print(incomingData.humidity);
+    Serial.println(" %");
+
+    Serial.print("Pressure: ");
+    Serial.print(incomingData.pressure);
+    Serial.println(" hPa");
+
+    Serial.print("Roll: ");
+    Serial.print(incomingData.roll);
+    Serial.println(" °");
+
+    Serial.print("Pitch: ");
+    Serial.print(incomingData.pitch);
+    Serial.println(" °");
+
+    Serial.print("Altitude: ");
+    Serial.print(incomingData.altitude);
+    Serial.println(" m");
+
+    Serial.println("--------------------------------------------------");
+  } else {
+    Serial.print("⚠️ Received unexpected data size: ");
+    Serial.print(len);
+    Serial.print(" bytes (expected ");
+    Serial.print(sizeof(incomingData));
+    Serial.println(")");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+
+  esp_now_register_recv_cb(OnDataRecv);
+  Serial.println("Receiver Ready. Waiting for data...");
+}
+
+void loop() {
+  // Nothing to do here — handled in callback
+}
