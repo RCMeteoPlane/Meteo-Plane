@@ -1,0 +1,49 @@
+#include <esp_now.h>
+#include <WiFi.h>
+
+// Define the structure matching the transmitter
+typedef struct struct_message {
+  float latitude;
+  float longitude;
+  float heading;
+} struct_message;
+
+// Create an instance to hold received data
+struct_message incomingData;
+
+// Callback function to handle received data
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len) {
+  if (len == sizeof(incomingData)) {
+    memcpy(&incomingData, data, sizeof(incomingData));
+
+    Serial.println("\n Received Navigation Data:");
+    Serial.print("Latitude: ");
+    Serial.println(incomingData.latitude, 6);
+    Serial.print("Longitude: ");
+    Serial.println(incomingData.longitude, 6);
+    Serial.print("Heading: ");
+    Serial.print(incomingData.heading);
+    Serial.println("°");
+    Serial.println("------------------------------------");
+  } else {
+    Serial.print("Unexpected data size: ");
+    Serial.println(len);
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+
+  esp_now_register_recv_cb(OnDataRecv);
+  Serial.println("GPS + Compass Receiver Ready");
+}
+
+void loop() {
+  // Nothing to do here; everything handled in callback
+}

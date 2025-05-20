@@ -1,0 +1,160 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <Wire.h>
+#include <BME280I2C.h>
+#include <EnvironmentCalculations.h>
+#include <math.h>
+
+// Accelerometer analog pins
+const int x_out = A0;
+const int y_out = A3;
+const int z_out = A6;
+
+// BME280 settings
+BME280I2C::Settings settings(
+  BME280::OSR_X1,
+  BME280::OSR_X1,
+  BME280::OSR_X1,
+  BME280::Mode_Forced,
+  BME280::StandbyTime_1000ms,
+  BME280::Filter_16,
+  BME280::SpiEnable_False,
+  BME280I2C::I2CAddr_0x76
+);
+BME280I2C bme(settings);
+
+// Altitude reference (will be set on boot)
+float referencePressure = NAN;
+float outdoorTemp = 4.7;
+
+// Struct to send
+typedef struct struct_message {
+  float temperature;
+  float humidity;
+  float pressure;
+  float roll;
+  float pitch;
+  float altitude;
+} struct_message;
+
+struct_message myData;
+esp_now_peer_info_t peerInfo;
+
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("\r\nSend Status:\t");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+  Serial.println("ESP32 Transmitter Booting...");
+
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init failed");
+    return;
+  }
+  Serial.println("ESP-NOW initialized");
+  esp_now_register_send_cb(OnDataSent);
+
+  uint8_t receiverMAC[] = {0x14, 0x2B, 0x2F, 0xEA, 0xBF, 0xA4};
+  memcpy(peerInfo.peer_addr, receiverMAC, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+  Serial.println("Peer added");
+
+  Wire.begin(21, 22);
+  Serial.println("Searching for BME280 sensor...");
+
+  if (!bme.begin()) {
+    Serial.println("Could not find BME280 sensor. Check wiring or I2C address.");
+    while (true);
+  }
+
+  Serial.println("BME280 sensor found!");
+
+  switch (bme.chipModel()) {
+    case BME280::ChipModel_BME280:
+      Serial.println("BME280 detected (has humidity)");
+      break;
+    case BME280::ChipModel_BMP280:
+      Serial.println("BMP280 detected (no humidity)");
+      break;
+    default:
+      Serial.println("Unknown sensor model!");
+  }
+
+  Serial.println("Transmitter is ready.\n");
+
+  // Read initial pressure to use as reference
+  float temp, hum, pres;
+  BME280::TempUnit tempUnit = BME280::TempUnit_Celsius;
+  BME280::PresUnit presUnit = BME280::PresUnit_hPa;
+  bme.read(pres, temp, hum, tempUnit, presUnit);
+  referencePressure = pres;
+  Serial.print("Reference pressure set: ");
+  Serial.print(referencePressure);
+  Serial.println(" hPa");
+}
+
+void loop() {
+  Serial.println("Reading sensors...");
+
+  int x_adc = analogRead(x_out);
+  int y_adc = analogRead(y_out);
+  int z_adc = analogRead(z_out);
+  Serial.printf("Raw ADC: X=%d Y=%d Z=%d\n", x_adc, y_adc, z_adc);
+
+  double x_g = (((double)x_adc * 3.3 / 4096) - 1.65) / 0.330;
+  double y_g = (((double)y_adc * 3.3 / 4096) - 1.65) / 0.330;
+  double z_g = (((double)z_adc * 3.3 / 4096) - 1.80) / 0.330;
+
+  myData.roll = ((atan2(y_g, z_g) * 180) / 3.14) + 180;
+  myData.pitch = ((atan2(z_g, x_g) * 180) / 3.14) + 180;
+
+  float temp = NAN, hum = NAN, pres = NAN;
+  BME280::TempUnit tempUnit = BME280::TempUnit_Celsius;
+  BME280::PresUnit presUnit = BME280::PresUnit_hPa;
+
+  bme.read(pres, temp, hum, tempUnit, presUnit);
+
+  myData.temperature = temp;
+  myData.humidity = hum;
+  myData.pressure = pres;
+
+  EnvironmentCalculations::AltitudeUnit envAltUnit = EnvironmentCalculations::AltitudeUnit_Meters;
+  EnvironmentCalculations::TempUnit envTempUnit = EnvironmentCalculations::TempUnit_Celsius;
+
+  myData.altitude = EnvironmentCalculations::Altitude(pres, envAltUnit, referencePressure, outdoorTemp, envTempUnit);
+
+  Serial.println("Sensor values:");
+  Serial.printf("Temp: %.2f C, Hum: %.2f %%, Pres: %.2f hPa\n", temp, hum, pres);
+  Serial.printf("Roll: %.2f deg, Pitch: %.2f deg, Altitude: %.2f m\n", myData.roll, myData.pitch, myData.altitude);
+
+  esp_err_t result = esp_now_send(peerInfo.peer_addr, (uint8_t *)&myData, sizeof(myData));
+  if (result == ESP_OK) {
+    Serial.println("Data sent via ESP-NOW\n");
+  } else {
+    Serial.println("Failed to send data\n");
+  }
+
+  // Check for manual zeroing command from Serial
+  if (Serial.available()) {
+    char input = Serial.read();
+    if (input == 'z' || input == 'Z') {
+      referencePressure = myData.pressure;
+      Serial.print("\n Manual altitude reset. New reference pressure: ");
+      Serial.print(referencePressure);
+      Serial.println(" hPa\n");
+    }
+  }
+
+  delay(2000);
+}

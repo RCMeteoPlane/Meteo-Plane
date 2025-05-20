@@ -1,0 +1,103 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <TinyGPS++.h>
+#include <HardwareSerial.h>
+#include <Wire.h>
+#include <QMC5883LCompass.h>
+
+// GPS setup
+TinyGPSPlus gps;
+HardwareSerial GPS_Serial(2);
+const int RXPin = 12;
+const int TXPin = 13;
+const uint32_t GPSBaud = 9600;
+
+// Compass setup
+QMC5883LCompass compass;
+
+// Struct to send
+typedef struct struct_message {
+  float latitude;
+  float longitude;
+  float heading;
+} struct_message;
+
+struct_message myData;
+esp_now_peer_info_t peerInfo;
+
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("\r\nSend Status:\t");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(2000);
+  Serial.println("ESP32 GPS + Compass Transmitter Booting...");
+
+  WiFi.mode(WIFI_STA);
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init failed");
+    return;
+  }
+  Serial.println("ESP-NOW initialized");
+  esp_now_register_send_cb(OnDataSent);
+
+  uint8_t receiverMAC[] = {0x14, 0x2B, 0x2F, 0xC4, 0xD3, 0x08};
+  memcpy(peerInfo.peer_addr, receiverMAC, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+  Serial.println("Peer added");
+
+  GPS_Serial.begin(GPSBaud, SERIAL_8N1, RXPin, TXPin);
+  Serial.println("GPS initialized");
+
+  Wire.begin();
+  compass.init();
+  Serial.println("Compass initialized");
+}
+
+void loop() {
+  // Process GPS data continuously
+  while (GPS_Serial.available() > 0) {
+    char data = GPS_Serial.read();
+    gps.encode(data);
+  }
+
+  if (gps.location.isValid()) {
+    myData.latitude = gps.location.lat();
+    myData.longitude = gps.location.lng();
+  } else {
+    myData.latitude = 0.0;
+    myData.longitude = 0.0;
+    Serial.println("Waiting for GPS fix...");
+  }
+
+  // Read compass heading
+  compass.read();
+  myData.heading = compass.getAzimuth();
+
+  // Print debug info
+  Serial.print("Latitude: ");
+  Serial.println(myData.latitude, 6);
+  Serial.print("Longitude: ");
+  Serial.println(myData.longitude, 6);
+  Serial.print("Heading: ");
+  Serial.println(myData.heading);
+
+  // Send data via ESP-NOW
+  esp_err_t result = esp_now_send(peerInfo.peer_addr, (uint8_t *)&myData, sizeof(myData));
+  if (result == ESP_OK) {
+    Serial.println("Data sent via ESP-NOW\n");
+  } else {
+    Serial.println("Failed to send data\n");
+  }
+
+  delay(2000);
+}
